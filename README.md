@@ -2,12 +2,7 @@
 
 This project is a web application that allows users to create reels. The user provides a prompt to the web application, then the application uses the OpenAI and DALLE APIs to generate a script and images, after that it synthesizes a voiceover using Firebase Functions, Storage and Hosting, and finally assembles the video to show it to the user. This is the high level architecture of the app:
 
-<CODE_BLOCK>
-
-There is an image that should be added later.
-
-</CODE_BLOCK> 
-
+![ChatGPT Image 3 may 2025, 13_41_53](https://github.com/user-attachments/assets/c6a48661-e34b-4407-a6a3-63416e64500b)
 
 This project leverages the power of Next.js, Firebase, and various AI APIs to create engaging and dynamic video content.
 
