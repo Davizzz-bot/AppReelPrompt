@@ -83,7 +83,3 @@ Este MVP sienta las bases para una aplicación de generación de video mucho má
 *   **Despliegue Sencillo:** Añadir configuraciones o scripts para facilitar el despliegue en plataformas cloud (Docker, Heroku, Render, etc.).
 
 ¡Siéntete libre de contribuir a este proyecto con nuevas ideas y código!
-
-## Licencia
-
-[Opcional: Añade una sección de licencia si deseas especificar cómo otros pueden usar tu código, por ejemplo, Licencia MIT.]
