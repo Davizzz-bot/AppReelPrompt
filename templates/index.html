@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generador de Video IA - MVP</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif; /* Fuente Inter como se sugiere */
+        }
+        /* Estilos para el mensaje de notificación */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 12px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+            pointer-events: none; /* Para que no interfiera con otros clics */
+        }
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+            pointer-events: auto;
+        }
+        .toast.success {
+            background-color: #4CAF50; /* Verde */
+            color: white;
+        }
+        .toast.error {
+            background-color: #f44336; /* Rojo */
+            color: white;
+        }
+        .toast.loading {
+            background-color: #2196F3; /* Azul */
+            color: white;
+        }
+        /* Estilo para asegurar que el video no exceda el ancho del contenedor y mantenga el aspect ratio */
+        video {
+            max-width: 100%;
+            height: auto;
+            border-radius: 0.5rem; /* Bordes redondeados */
+        }
+        /* Estilo para botones */
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            transition: background-color 0.2s;
+            cursor: pointer;
+        }
+        .btn-primary {
+            background-color: #3b82f6; /* Azul Tailwind */
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: #2563eb;
+        }
+        .btn-secondary {
+            background-color: #6b7280; /* Gris Tailwind */
+            color: white;
+        }
+        .btn-secondary:hover {
+            background-color: #4b5563;
+        }
+        /* Mejoras para la responsividad del área de video */
+        .video-container {
+            width: 100%;
+            max-width: 360px; /* Ancho típico para video vertical en preview */
+            margin-left: auto;
+            margin-right: auto;
+            aspect-ratio: 9 / 16; /* Para mantener la proporción vertical */
+            background-color: #e5e7eb; /* Color de fondo mientras carga */
+        }
+        .video-container video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover; /* Asegura que el video cubra el contenedor */
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col items-center justify-center p-4">
+
+    <div class="bg-white p-6 sm:p-8 rounded-lg shadow-xl w-full max-w-lg">
+        <header class="mb-6 text-center">
+            <h1 class="text-2xl sm:text-3xl font-bold text-gray-800">Generador de Video Corto IA</h1>
+            <p class="text-gray-600 mt-1">Ingresa una idea y crearemos un video corto para ti.</p>
+        </header>
+
+        <main>
+            <div class="mb-4">
+                <label for="prompt" class="block text-sm font-medium text-gray-700 mb-1">Tu idea o prompt:</label>
+                <textarea id="prompt" name="prompt" rows="4" class="w-full p-3 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 resize-none" placeholder="Ej: Un perro jugando feliz en un parque soleado..."></textarea>
+            </div>
+
+            <button id="generateBtn" class="w-full btn btn-primary mb-6">
+                Generar Video
+            </button>
+
+            <div id="videoResult" class="hidden">
+                <h2 class="text-xl font-semibold text-gray-700 mb-3 text-center">¡Video Generado!</h2>
+                <div class="video-container bg-gray-200 rounded-md overflow-hidden shadow">
+                    <video id="videoPlayer" controls class="rounded-md">
+                        Tu navegador no soporta el elemento de video.
+                    </video>
+                </div>
+                <a id="downloadBtn" href="#" class="block w-full btn btn-secondary mt-4 text-center" download="video_generado.mp4">
+                    Descargar Video
+                </a>
+            </div>
+        </main>
+    </div>
+
+    <div id="toastNotification" class="toast"></div>
+
+    <script>
+        // Elementos del DOM
+        const promptTextarea = document.getElementById('prompt');
+        const generateBtn = document.getElementById('generateBtn');
+        const videoResultDiv = document.getElementById('videoResult');
+        const videoPlayer = document.getElementById('videoPlayer');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const toastNotification = document.getElementById('toastNotification');
+
+        let isLoading = false;
+
+        // Función para mostrar notificaciones (toast)
+        function showToast(message, type = 'info', duration = 3000) {
+            toastNotification.textContent = message;
+            toastNotification.className = 'toast show ' + type; // Resetea clases y añade la nueva
+
+            setTimeout(() => {
+                toastNotification.className = 'toast'; // Oculta el toast
+            }, duration);
+        }
+
+        // Event listener para el botón de generar video
+        generateBtn.addEventListener('click', async () => {
+            if (isLoading) return; // Evitar múltiples solicitudes
+
+            const prompt = promptTextarea.value.trim();
+            if (!prompt) {
+                showToast('Por favor, ingresa un prompt.', 'error');
+                return;
+            }
+
+            isLoading = true;
+            generateBtn.disabled = true;
+            generateBtn.textContent = 'Generando... Por favor espera.';
+            videoResultDiv.classList.add('hidden'); // Ocultar resultados anteriores
+            showToast('Procesando tu video...', 'loading', 10000); // Toast de carga más largo
+
+            try {
+                // Enviar el prompt al backend
+                const response = await fetch('/generate-video', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ prompt: prompt }),
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({ detail: 'Error desconocido del servidor.' }));
+                    throw new Error(errorData.detail || `Error del servidor: ${response.status}`);
+                }
+
+                const data = await response.json();
+
+                if (data.video_url) {
+                    // Mostrar el video y el botón de descarga
+                    videoPlayer.src = data.video_url + '?t=' + new Date().getTime(); // Añadir timestamp para evitar caché
+                    videoPlayer.load(); // Cargar el nuevo video
+                    downloadBtn.href = data.video_url;
+                    videoResultDiv.classList.remove('hidden');
+                    showToast('¡Video generado exitosamente!', 'success');
+                } else if (data.error) {
+                    throw new Error(data.error);
+                } else {
+                    throw new Error('Respuesta inesperada del servidor.');
+                }
+
+            } catch (error) {
+                console.error('Error al generar video:', error);
+                showToast(`Error: ${error.message}`, 'error', 5000);
+                videoResultDiv.classList.add('hidden');
+            } finally {
+                isLoading = false;
+                generateBtn.disabled = false;
+                generateBtn.textContent = 'Generar Video';
+            }
+        });
+
+        // Manejo simple para el botón de descarga (la funcionalidad principal es el atributo download)
+        downloadBtn.addEventListener('click', () => {
+            showToast('Iniciando descarga...', 'info');
+        });
+    </script>
+</body>
+</html>
